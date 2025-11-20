@@ -8,26 +8,25 @@ import java.util.*;
 
 public class Gallows {
 
+    private static final Scanner scanner = new Scanner(System.in);
+
     private static List<String> words;
     private static String word;
     private static StringBuilder wordMask;
 
     private static Set<Character> wrongLetters;
     private static Set<Character> inputLetters;
-
     private static final int MAX_ERRORS = 5;
 
-    private static final int HARD = 2;
-    private static final int MEDIUM = 1;
-    private static final int EASY = 0;
+    private static final int HARD = 3;
+    private static final int EASY = 1;
 
     private static final String PATH = "src/main/resources/russian_words.txt";
 
-    public static final String START = "Н";
-    public static final String QUIT = "В";
-
     public static void startSession() {
-        Scanner scanner = new Scanner(System.in);
+        final String START = "Н";
+        final String QUIT = "В";
+
         while(true) {
             System.out.printf("[%s]овая игра или [%s]ыход?",START, QUIT);
             System.out.print("\nВаш ответ:");
@@ -35,7 +34,7 @@ public class Gallows {
             String response  = scanner.nextLine().toUpperCase();
 
             if(response.equals(START)) {
-                startGame(difficultSelection(scanner));
+                startGame(difficultSelection());
             }
             else if(response.equals(QUIT)){
                 System.out.println("Пока :(");
@@ -47,31 +46,16 @@ public class Gallows {
         }
     }
 
-    private static int difficultSelection(Scanner scanner) {
+    private static int difficultSelection() {
         System.out.println("Выберите сложность. Доступны: Легкая - 1, Средняя - 2, Сложная - 3");
         while (true) {
-            try {
-                System.out.print("Введите число выбранной сложности:");
-                int input = Integer.parseInt(scanner.nextLine());
+            System.out.print("Введите число выбранной сложности:");
 
-                if(input < 1 || input > 3) {
-                    System.out.println("Некорректный ввод режима сложности");
-                    continue;
-                }
+            int input = scanner.nextInt();
+            scanner.nextLine();
 
-                switch(input) {
-                    case 1 -> {
-                        return EASY;
-                    }
-                    case 2 -> {
-                        return MEDIUM;
-                    }
-                    case 3-> {
-                        return HARD;
-                    }
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Некорректный ввод режима сложности");
+            if(input >= EASY && input <= HARD) {
+                return input;
             }
         }
     }
@@ -101,12 +85,28 @@ public class Gallows {
     }
 
     private static void initialize(int difficult) {
-        words = generate(PATH, difficult);
+        words = generate();
         word = takeRandomWord();
         wordMask = createMask();
+
+        openNLettersInMask(HARD - difficult);
+
         inputLetters = new HashSet<>();
         wrongLetters = new HashSet<>();
+
         System.out.println("Игра началась!");
+    }
+
+    private static void openNLettersInMask(int n) {
+        Set<Integer> usesIndexes = new HashSet<>();
+        for(int i = 0; i < n;i++) {
+            int index;
+            do {
+                index = new Random().nextInt(word.length());
+            } while (usesIndexes.contains(index));
+            usesIndexes.add(index);
+            updateMask(word.charAt(index));
+        }
     }
 
     private static void printGameState() {
@@ -151,6 +151,7 @@ public class Gallows {
         else{
             System.out.print("Поздравляем! Вы выиграли! Ваше слово:" + word);
         }
+        System.out.println();
     }
 
     private static StringBuilder createMask() {
@@ -192,7 +193,6 @@ public class Gallows {
     }
 
     private static char inputLetter() {
-        Scanner scanner = new Scanner(System.in);
         while(true) {
             System.out.print("Введите букву:");
             String input = scanner.nextLine().toLowerCase();
@@ -219,44 +219,21 @@ public class Gallows {
         return words.get(index);
     }
 
-
-    public static List<String> generate(String inputPath, int minLengthFromDifficult) {
+    private static List<String> generate()  {
         if(words != null) return words;
 
-        validateFilePath(inputPath);
-        Path path = Path.of(inputPath);
+        validateFilePath();
+        Path path = Path.of(Gallows.PATH);
 
         try {
-            List<String> words = Files.readAllLines(path);
-
-            int minLengthWordInFile = findMinLengthWordInFile(words);
-            return words
-                    .stream()
-                    .filter(word -> word.length() >= minLengthFromDifficult + minLengthWordInFile)
-                    .toList();
-        } catch(IOException e) {
-            System.out.println("Ошибка чтения файла:" + e);
-            return List.of();
+            return Files.readAllLines(path);
+        } catch (IOException e) {
+            throw new RuntimeException("Не удалось прочитать файл", e);
         }
     }
 
-    private static int findMinLengthWordInFile(List<String> words) throws IOException {
-        return words
-                .stream()
-                .mapToInt(String::length)
-                .min()
-                .orElse(0);
-    }
-
-    private static List<String> generate(String inputPath) throws IOException {
-        validateFilePath(inputPath);
-        Path path = Path.of(inputPath);
-
-        return Files.readAllLines(path);
-    }
-
-    private static void validateFilePath(String path) {
-        if(path == null || path.trim().isEmpty()) {
+    private static void validateFilePath() {
+        if(Gallows.PATH == null || Gallows.PATH.trim().isEmpty()) {
             throw new IllegalArgumentException("Путь файла не может быть пустым или равным null");
         }
     }
